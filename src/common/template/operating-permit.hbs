@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body {
+      font-family: Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      margin: 0;
+      padding: 24px;
+    }
+
+    .container {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 16px;
+    }
+
+    .header {
+      text-align: center;
+    }
+
+    .logos {
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .logos img {
+      width: 70px;
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 8px;
+    }
+
+    .center {
+      text-align: center;
+    }
+
+    .fees {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 20px;
+    }
+
+    .fee {
+      text-align: center;
+      flex: 1;
+    }
+
+    .right {
+      text-align: center;
+    }
+
+    .big {
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    footer {
+      position: fixed;
+      bottom: 24px;
+      width: 100%;
+      text-align: center;
+      font-size: 9px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <!-- LEFT -->
+    <div>
+      <div class="logos">
+        <img src="{{coatOfArms}}" />
+        <img src="{{assemblyLogo}}" />
+      </div>
+
+      <div class="header">
+        <h2>{{assemblyName}}</h2>
+        <p>Business Operating Permit Bill</p>
+      </div>
+
+      <div class="row">
+        <div class="center">
+          <strong>Business Name</strong><br />
+          {{businessName}}
+        </div>
+        <div class="center">
+          <strong>Telephone</strong><br />
+          {{telephone}}
+        </div>
+        <div class="center">
+          <strong>Account No.</strong><br />
+          {{accountNo}}
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="center">
+          <strong>Business Type</strong><br />
+          {{businessType}}
+        </div>
+        <div class="center">
+          <strong>Category</strong><br />
+          {{category}}
+        </div>
+      </div>
+
+      <div class="fees">
+        <div class="fee">
+          <strong>Arrears</strong><br />
+          GHS {{arrears}}
+        </div>
+        <div class="fee">
+          <strong>{{year}} Fee</strong><br />
+          GHS {{yearFee}}
+        </div>
+        <div class="fee">
+          <strong>Total</strong><br />
+          GHS {{total}}
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="right">
+      <p><strong>Assembly</strong><br />{{assemblyName}}</p>
+      <p><strong>Bill Date</strong><br />{{billDate}}</p>
+      <p><strong>Year</strong><br />{{year}}</p>
+      <p><strong>Account No.</strong><br />{{accountNo}}</p>
+      <p><strong>Business Name</strong><br />{{ownerName}}</p>
+
+      <p class="big">GHS {{total}}</p>
+    </div>
+  </div>
+
+  <footer>
+    Kindly pay the amount due to the District Finance Officer or any Revenue Collector appointed by the Assembly.<br />
+    Dial *389*555# to pay.<br />
+    <em>This is a system-generated Business Operating Permit bill.</em>
+  </footer>
+</body>
+</html>
