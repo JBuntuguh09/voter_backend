@@ -18,13 +18,22 @@ export class Person  {
     @Column({ name: 'LastName', type: 'varchar', length: 100, nullable: false })
     lastName: string;
 
-    @Column({ name: 'Email', type: 'varchar', length: 150, unique: true, nullable: false })
+    @Column({ name: 'Email', type: 'varchar', length: 150, unique: true, nullable: true })
     email: string;
 
     @Column({ name: 'PhoneNumber', type: 'varchar', length: 15, unique: true, nullable: true })
     phoneNumber: string;
+    
+    @Column({ name: 'PhoneNumber2', type: 'varchar', length: 15, unique: false, nullable: true })
+    phoneNumber2: string;
 
-    @OneToMany(() => User, user => user.person)
+    @Column({ name: 'Title', type: 'varchar', length: 100, unique: false, nullable: true })
+    title?: string;
+    
+    @Column({ name: 'Gender', type: 'varchar', length: 15,  nullable: true })
+    gender?: string;
+
+    @OneToMany(() => User, user => user.person, {nullable: true, onDelete:'CASCADE'})
     user: User[];
 
     @ManyToOne(() => Organization, assembly=> assembly.person, { nullable: true })

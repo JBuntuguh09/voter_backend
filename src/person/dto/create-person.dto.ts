@@ -51,3 +51,34 @@ export class CreatePersonDto {
     updatedBy?: string;
 }
 export class UpdatePersonDto extends PartialType(CreatePersonDto) {}
+
+
+export class InsertBulkDTO{
+  @ApiProperty({ example: 'JACK' })
+  @IsString()
+  FIRSTNAME: string;
+ 
+  @ApiProperty({ example: 'DOE' })
+  @IsString()
+  LASTNAME: string;
+  
+  @ApiProperty({ example: 'DSI' })
+  @IsString()
+  RANK: string;
+  
+  @ApiProperty({ example: '0542555678' })
+  @IsString()
+  CONTACT: string;
+
+  @ApiProperty({ example: '027727277' })
+  @IsString()
+  CONTACT_2: string;
+  
+  @ApiProperty({ example: 'FEMALE' })
+  @IsString()
+  GENDER: string;
+
+  
+
+
+}
