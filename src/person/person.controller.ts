@@ -1,6 +1,6 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseInterceptors, UploadedFile, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseInterceptors, UploadedFile, UseGuards, Query } from '@nestjs/common';
 import { PersonService } from './person.service';
-import { CreatePersonDto } from './dto/create-person.dto';
+import { CreatePersonDto, FindPersonDto } from './dto/create-person.dto';
 import { UpdatePersonDto } from './dto/update-person.dto';
 import { ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -20,8 +20,8 @@ export class PersonController {
   }
 
   @Get()
-  findAll() {
-    return this.personService.findAll();
+  async findAll(@Query() query: FindPersonDto) {
+    return this.personService.findAll(query);
   }
 
   @Get(':id')
@@ -37,7 +37,8 @@ export class PersonController {
     @Body('assemblyId') assemblyId: number,
     @CurrentUser() user: User
   ) {
-    
+    console.log(assemblyId)
+    console.log("-------------")
     return this.personService.processExcel(file, assemblyId, user);
   }
 

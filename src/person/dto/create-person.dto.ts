@@ -1,5 +1,11 @@
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 import { IsEmail, IsOptional, IsString, Length } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+
+  IsNumber,
+  Min,
+} from 'class-validator';
 
 export class CreatePersonDto {
   @ApiProperty({ example: 'John', description: 'First name of the person' })
@@ -81,4 +87,77 @@ export class InsertBulkDTO{
   
 
 
+}
+
+
+export class FindPersonDto {
+  /**
+   * Search by first name only
+   * Example: ?firstName=Faith
+   */
+  @IsOptional()
+  @IsString()
+  firstName?: string;
+
+  /**
+   * Search by last name only
+   * Example: ?lastName=Antwi
+   */
+  @IsOptional()
+  @IsString()
+  lastName?: string;
+
+  /**
+   * Global search:
+   * firstName OR lastName OR full name
+   * Example: ?search=faith antwi
+   */
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  /**
+   * Search phoneNumber OR phoneNumber2
+   * Example: ?phone=0244
+   */
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  /**
+   * Search by email
+   * Example: ?email=test@gmail.com
+   */
+  @IsOptional()
+  @IsString()
+  email?: string;
+
+  /**
+   * Filter by organization
+   * Example: ?organizationId=1
+   */
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  organizationId?: number;
+
+  /**
+   * Pagination page number
+   * Example: ?page=1
+   */
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  page?: number;
+
+  /**
+   * Records per page
+   * Example: ?limit=20
+   */
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  limit?: number;
 }

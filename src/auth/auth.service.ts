@@ -32,6 +32,7 @@ import { randomInt } from 'crypto';
 import { generateSixCharPassword } from 'src/common/utils/Interface';
 import { ChannelEnum } from 'src/message/dto/create-message.dto';
 import { newUser, ResendMess } from 'src/common/template/messages';
+import { MessagesService } from 'src/message/message.service';
 
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 const NUMBERS = "0123456789";
@@ -55,6 +56,7 @@ export class AuthService {
     private readonly emailService: EmailService,
     private readonly otpService: OtpService,
     private readonly configService: ConfigService,
+    private readonly messageService: MessagesService,
   ) { }
 
   /** --------------------- VALIDATE USER --------------------- */
@@ -121,8 +123,24 @@ export class AuthService {
       // Hash the password
       const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
 
-      // Create associated Person record
-      const person = await this.personService.create(createUserDto);
+      let person: Person;
+      if (createUserDto.personId) {
+        const existingPerson = await this.personRepo.findOneBy({ id: createUserDto.personId });
+        if (!existingPerson) throw new NotFoundException("Person not found");
+        person = existingPerson;
+        createUserDto.organizationId = existingPerson.organization?.id;
+        await this.personRepo.update(existingPerson.id, {
+          firstName: createUserDto.firstName ?? existingPerson.firstName,
+          lastName: createUserDto.lastName ?? existingPerson.lastName,
+          phoneNumber: createUserDto.phoneNumber ?? existingPerson.phoneNumber,
+          email: createUserDto.email ?? existingPerson.email,
+          updatedBy: userz?.username || "System",
+          updatedDatetime: new Date(),
+        });
+      } else {
+        // Create associated Person record when personId is not provided
+        person = await this.personService.create(createUserDto);
+      }
 
       //const role = await this.roleRepo.findOne ({where: {id: createUserDto.roleId}})
 
@@ -134,7 +152,7 @@ export class AuthService {
         password: hashedPassword,
       });
 
-      const message = newUser(createUserDto.firstName,
+      const message = newUser(person.title+" "+createUserDto.firstName,
         createUserDto.lastName, createUserDto.username, createUserDto.email, createUserDto.password
       )
       // Save user to database
@@ -143,10 +161,10 @@ export class AuthService {
       // Prepare welcome email
       const emailDto: SendEmailDTO = {
         recipient: [savedUser.email],
-        subject: 'Welcome to Hohoe Smart City. Your Account Details!',
+        subject: 'Welcome to IMMILAC Aflao. Your Account Details!',
         title: "New Login Details",
         html: message,
-        text: `Welcome, ${person.firstName ?? ''} ${person.lastName ?? ''}!`,
+        text: `Welcome, ${person.title} ${person.firstName ?? ''} ${person.lastName ?? ''}!`,
         message: message,
         fromUserId: user.id,
         recipientName: createUserDto.firstName + " " + createUserDto.lastName,
@@ -383,7 +401,19 @@ await this.personRepo.save(person); // 🔥 THIS IS THE FIX
   async forgotPassword(requestOtp: RequestOtp) {
     const user = await this.userRepository.findOne({ where: { email: requestOtp.email } });
     if (!user) throw new NotFoundException("User not found");
+    
     return await this.emailVerification(user, OTPType.RESET_PASSWORD);
+  }
+
+  async sendOTP(number: string){
+    const person = await this.personRepo.findOneBy({phoneNumber: number })
+    if(!person) throw new NotFoundException("Person not found")
+     
+      const genOtp = await this.otpService.generateOtp(person, OTPType.OTP)
+      const message = `Your OTP for IMMILAC Aflao Voter App is ${genOtp}. Do not share this code with anyone. It expires in 5 minutes.
+`
+       return await this.messageService.sendSms(person.phoneNumber, person, message)      
+       
   }
 
   async resetPassword(dto: ResetPasswordDTO): Promise<{ message: string }> {
@@ -413,16 +443,19 @@ await this.personRepo.save(person); // 🔥 THIS IS THE FIX
 
     // Invalidate OTP after use
     await this.otpRepository.delete({
-      user: { id: user.id },
+      person: { id: user.person.id },
       type: OTPType.RESET_PASSWORD
     });
 
     return { message: "Password reset successfully" };
   }
 
+  
 
   async emailVerification(user: User, type: OTPType) {
-    const token = await this.otpService.generateOtp(user, type);
+    const person = await this.personRepo.findOneBy({user: user})
+    if(!person) throw new NotFoundException("User not found")
+    const token = await this.otpService.generateOtp(person, type);
 
     if (type === OTPType.OTP) {
       const emailDto: SendEmailDTO = {
@@ -432,6 +465,7 @@ await this.personRepo.save(person); // 🔥 THIS IS THE FIX
         text: "",
         message: ``
       };
+     
       await this.emailService.sendEmail(emailDto, user);
       return { message: "OTP sent", otp: token };
     }
@@ -494,7 +528,7 @@ await this.personRepo.save(person); // 🔥 THIS IS THE FIX
 
     // Optional: Clear old OTPs for security
     await this.otpRepository.delete({
-      user: { id: user.id },
+      person: { id: user.person.id },
       type: OTPType.RESET_PASSWORD
     });
 

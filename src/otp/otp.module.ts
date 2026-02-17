@@ -6,10 +6,11 @@ import { Otp } from './entities/otp.entity';
 import { User } from 'src/auth/entities/user.entity';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
+import { Person } from 'src/person/entities/person.entity';
 
 @Module({
   imports:[
-    TypeOrmModule.forFeature([Otp, User]),
+    TypeOrmModule.forFeature([Otp, User, Person]),
     PassportModule,
     //configure jwt
     JwtModule.register({})

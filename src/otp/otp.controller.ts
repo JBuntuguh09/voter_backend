@@ -1,34 +1,37 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+// otp.controller.ts
+
+import { Body, Controller, Post, Delete, Param } from '@nestjs/common';
 import { OtpService } from './otp.service';
-import { CreateOtpDto } from './dto/create-otp.dto';
-import { UpdateOtpDto } from './dto/update-otp.dto';
+import { OTPType } from 'src/common/enum/enums.enum';
 
 @Controller('otp')
 export class OtpController {
   constructor(private readonly otpService: OtpService) {}
 
-  @Post()
-  create(@Body() createOtpDto: CreateOtpDto) {
-    return this.otpService.create(createOtpDto);
+  /* Example: generate OTP */
+  @Post('generate')
+  async generateOtp(
+    @Body() body: { user: any; type: OTPType },
+  ) {
+    return this.otpService.generateOtp(body.user, body.type);
   }
 
-  @Get()
-  findAll() {
-    return this.otpService.findAll();
+  /* Example: validate OTP */
+  @Post('validate')
+  async validateOtp(
+    @Body() body: { personId: number; token: string },
+  ) {
+    const valid = await this.otpService.validateOtp(
+      body.personId,
+      body.token,
+    );
+
+    return { valid };
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.otpService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateOtpDto: UpdateOtpDto) {
-    return this.otpService.update(+id, updateOtpDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.otpService.remove(+id);
+  /* Delete user OTPs */
+  @Delete(':userId')
+  async deleteOtp(@Param('userId') userId: number) {
+    return this.otpService.deleteByUserId(userId);
   }
 }

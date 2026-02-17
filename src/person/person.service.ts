@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Person } from './entities/person.entity';
-import { CreatePersonDto, InsertBulkDTO, UpdatePersonDto } from './dto/create-person.dto';
+import { CreatePersonDto, FindPersonDto, InsertBulkDTO, UpdatePersonDto } from './dto/create-person.dto';
 import { Organization } from 'src/organization/entities/organization.entity';
 import { User } from 'src/auth/entities/user.entity';
   import * as XLSX from 'xlsx';
@@ -25,11 +25,87 @@ export class PersonService {
     return this.personRepository.save(person);
   }
 
-  async findAll(): Promise<Person[]> {
-    return this.personRepository.find({
-      relations: ['user', 'assembly', 'image', 'region'],
+  async findAll(query: FindPersonDto): Promise<any> {
+  const {
+    firstName,
+    lastName,
+    search,
+    phone,
+    email,
+    organizationId,
+    page,
+    limit,
+  } = query;
+
+  const qb = this.personRepository
+    .createQueryBuilder('person')
+    .leftJoinAndSelect('person.user', 'user')
+    .leftJoinAndSelect('person.organization', 'organization')
+    .leftJoinAndSelect('person.image', 'image')
+    .orderBy('person.createdDatetime', 'DESC');
+
+  // ---- filters ----
+
+  if (firstName) {
+    qb.andWhere('LOWER(person.firstName) LIKE LOWER(:firstName)', {
+      firstName: `%${firstName}%`,
     });
   }
+
+  if (lastName) {
+    qb.andWhere('LOWER(person.lastName) LIKE LOWER(:lastName)', {
+      lastName: `%${lastName}%`,
+    });
+  }
+
+  // combined search (first + last)
+  if (search) {
+    qb.andWhere(
+      `(LOWER(person.firstName) ILIKE LOWER(:search)
+        OR LOWER(person.lastName) ILIKE LOWER(:search)
+        OR LOWER(person.phoneNumber) ILIKE LOWER(:search)
+        OR LOWER(person.phoneNumber2) ILIKE LOWER(:search)
+        OR LOWER(person.email) ILIKE LOWER(:search)
+        OR LOWER(CONCAT(person.firstName, ' ', person.lastName)) ILIKE LOWER(:search))`,
+      { search: `%${search}%` }
+    );
+  }
+
+  if (phone) {
+    qb.andWhere(
+      `(person.phoneNumber LIKE :phone OR person.phoneNumber2 LIKE :phone)`,
+      { phone: `%${phone}%` }
+    );
+  }
+
+  if (email) {
+    qb.andWhere('LOWER(person.email) LIKE LOWER(:email)', {
+      email: `%${email}%`,
+    });
+  }
+
+  if (organizationId) {
+    qb.andWhere('organization.id = :organizationId', {
+      organizationId,
+    });
+  }
+
+  // ---- pagination (ONLY if passed) ----
+  if (page && limit) {
+    qb.skip((page - 1) * limit).take(limit);
+  }
+
+  const [data, total] = await qb.getManyAndCount();
+
+  return {
+    data,
+    total,
+    page: page ?? null,
+    limit: limit ?? null,
+    totalPages: page && limit ? Math.ceil(total / limit) : null,
+  };
+}
+
 
   async findOne(id: number): Promise<Person> {
     const person = await this.personRepository.findOne({
@@ -100,6 +176,8 @@ export class PersonService {
   //   );
   // }
 
+  console.log(assemblyId)
+
   return this.bulkUpload(rows, assemblyId, user);
 }
 
@@ -111,13 +189,15 @@ export class PersonService {
   const currentYear = new Date().getFullYear();
   const prefix = "PH";
 
+  console.log("assemblyId", assemblyId)
   const organization = await this.orgRepo.findOneBy({id:assemblyId})
 
   if(!organization){
     throw new NotFoundException("This organzation does not exist")
   }
 
-  return this.personRepository.manager.transaction(async (manager) => {
+  try {
+    return this.personRepository.manager.transaction(async (manager) => {
 // -------- UNIQUE EXTRACTION --------
     
     // Get last number safely (numeric, not string sort)
@@ -164,5 +244,8 @@ export class PersonService {
       .orIgnore()   // 🔥 skips duplicates
       .execute();
   });
+  } catch (error) {
+    console.log(error)
+  }
 }
 }

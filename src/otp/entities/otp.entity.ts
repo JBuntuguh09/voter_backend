@@ -1,15 +1,16 @@
 import { User } from "src/auth/entities/user.entity";
 import { OTPType } from "src/common/enum/enums.enum";
+import { Person } from "src/person/entities/person.entity";
 import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 
-Entity()
+@Entity()
 export class Otp {
     @PrimaryGeneratedColumn({name:"Otp_Id", type:'int'})
     id: number;
 
-    @ManyToOne(()=>User, {nullable:false})
+    @ManyToOne(()=>Person, {nullable:false})
     @JoinColumn()
-    user: User;
+    person: Person;
 
     @Column()
     token: string;//hashed otp for verification
@@ -19,6 +20,9 @@ export class Otp {
 
     @Column()
     expiresAt: Date;
+    
+    @Column({default: 0})
+    repeats?: number = 0;
 
     @CreateDateColumn()
     createdOn: Date

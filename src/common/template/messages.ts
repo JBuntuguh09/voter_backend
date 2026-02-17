@@ -6,14 +6,14 @@ export const newUser =(fname: string,
 )=>{
     return `<div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 24px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
 
-      <h2 style="color: #2c3e50;">Welcome to Hohoe Smart City! 🎉</h2>
+      <h2 style="color: #2c3e50;">Welcome to IMMILAC Aflao! 🎉</h2>
 
       <p>
         Dear <strong>${fname ?? ''} ${lname ?? ''}</strong>,
       </p>
 
       <p>
-        We are excited to have you on board and look forward to helping you access smart services designed to make life in Hohoe easier.
+        We are excited to have you on board and look forward to helping you access smart services designed to make voting easier.
       </p>
 
       <p>
@@ -23,25 +23,23 @@ export const newUser =(fname: string,
       <div style="background-color: #f0f3f7; padding: 16px; border-radius: 6px; margin: 16px 0;">
         <p><strong>Username:</strong> ${username}</p>
         <p><strong>Email:</strong> ${email}</p>
-        <p><strong>Temporary Password:</strong> ${pword}</p>
+        <p><strong>Password:</strong> ${pword}</p>
       </div>
 
-      <p style="color: #c0392b;">
-        For your security, please log in and change your password immediately after your first sign-in.
-      </p>
+     
 
       <p>
         <a 
-          href="https://hohoe.smartcitygh.com"
+          href="https://shorturl.at/aie6b"
           style="display: inline-block; padding: 12px 20px; background-color: #3498db; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold;"
         >
-          🔗 Login to Hohoe Smart City
+          🔗 Login to IMMILAC Aflao
         </a>
       </p>
 
       <p>
-        If you did not request this account or need any assistance, please contact our support team at
-        <a href="mailto:support@smartcitygh.com">support@smartcitygh.com</a> / 0536901206.
+        If you did not request this account or need any assistance, please contact your administrator or Electoral Commission support team
+       
       </p>
 
       <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 24px 0;" />
@@ -52,8 +50,8 @@ export const newUser =(fname: string,
 
       <p>
         Warm regards,<br />
-        <strong>Hohoe Smart City Team</strong><br />
-        <a href="https://hohoe.smartcitygh.com">https://hohoe.smartcitygh.com</a>
+        <strong>EC Team</strong><br />
+        <a href="https://shorturl.at/aie6b">IMMILAC Aflao</a>
       </p>
 
     </div>`

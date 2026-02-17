@@ -15,14 +15,16 @@ import { OtpModule } from 'src/otp/otp.module';
 import { EmailModule } from 'src/email/email.module';
 import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from 'src/common/strategies/jwt.strategy';
+import { MessageModule } from 'src/message/message.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Person, Organization, Otp, Role, Message, Candidate]),
+    TypeOrmModule.forFeature([User, Person, Organization, Otp, Role, Message, Candidate, Message]),
     PassportModule,
     PersonModule,
     OtpModule,
     EmailModule,
+    MessageModule,
 
     //configure jwt
     JwtModule.register({})

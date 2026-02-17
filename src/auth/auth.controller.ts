@@ -2,7 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Put, Pars
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../common/gaurds/jwt-auth.guard';
 import { AuthService } from './auth.service';
-import { CreateUserDto, GetUsersDto, LoginDto, RegisterDto, ResendResetPasswordDTO, UpdateUserRegisterDto } from './dto/create-auth.dto';
+import { CreateUserDto, GetUsersDto, LoginDto, RegisterDto, ResendResetPasswordDTO, SendOTPDTO, UpdateUserRegisterDto } from './dto/create-auth.dto';
 import { UpdateUserDto } from './dto/create-auth.dto'
 import { User } from './entities/user.entity';
 import { CurrentUser } from 'src/common/decorators/current-user.decorators';
@@ -28,6 +28,14 @@ export class AuthController {
     return this.authService.login(loginDto);
   }
 
+  @Post("/send-otp")
+  @ApiOperation({summary: "Send otp"})
+  async sendOtp(
+    @Body() dto: SendOTPDTO,
+   
+  ){
+      return this.userService.sendOTP(dto.phone)
+  }
    @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @Get()

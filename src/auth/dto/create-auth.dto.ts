@@ -141,6 +141,12 @@ export class ResendResetPasswordDTO {
   email: string;
 }
 
+export class SendOTPDTO {
+  @ApiPropertyOptional({example:"0548255903"})
+  @IsOptional()
+  phone: string;
+}
+
 export class ResetPasswordDTO {
   @IsNotEmpty()
   token: string;
