@@ -126,6 +126,18 @@ export class CandidateService {
   async update(id: number, dto: UpdateCandidateDto) {
     const candidate = await this.findOne(id);
 
+    if(dto.base64Image){
+      const image = this.imageRepo.create({
+        base64: dto.base64Image,
+        createdBy: dto.createdBy || "system",
+      });
+      const savedImage = await this.imageRepo.save(image);
+      candidate.image = savedImage;
+    
+    }
+
+    
+
     Object.assign(candidate, dto);
 
     return this.candidateRepo.save(candidate);

@@ -6,7 +6,7 @@ import {
   IsNumber,
   IsNumberString,
 } from "class-validator";
-import { ApiProperty } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 export class CreateCandidateDto {
   @ApiProperty({ example: "CAND-001", required: false })
@@ -53,6 +53,10 @@ export class CreateCandidateDto {
   @IsOptional()
   @IsNumber()
   imageId?: number;
+
+  @ApiPropertyOptional({ description: 'Base64 encoded image string', example: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...' })
+    @IsOptional()
+    base64Image?: string;
 
   @ApiProperty({ example: "admin", required: false })
   @IsOptional()
