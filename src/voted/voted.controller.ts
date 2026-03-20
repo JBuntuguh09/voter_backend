@@ -22,6 +22,14 @@ export class VotedController {
     return this.votedService.findAll(dto);
   }
 
+  // ✅ Param version (optional alternative)
+  @Get("stats/:organizationId")
+  async getVoterStatsByOrg(
+    @Param("organizationId", ParseIntPipe) organizationId: number
+  ) {
+    return this.votedService.getVoterStats(organizationId);
+  }
+
   // ---- GET ONE ----
   @Get(":id")
   findOne(@Param("id", ParseIntPipe) id: number) {

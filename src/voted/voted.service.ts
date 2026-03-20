@@ -120,4 +120,48 @@ export class VotedService {
     await this.votedRepo.remove(voted);
     return { message: "Voted record deleted successfully" };
   }
+
+  async getVoterStats(organizationId?: number) {
+  const query = this.votedRepo
+    .createQueryBuilder("voted")
+    .leftJoin("voted.user", "user")
+    .leftJoin("voted.organization", "organization")
+    .select("voted.position", "position")
+    .addSelect("COUNT(DISTINCT user.id)", "totalVoters")
+    .where("voted.status = :status", { status: "Active" })
+    .groupBy("voted.position")
+    .orderBy("voted.position", "ASC");
+
+  if (organizationId) {
+    query.andWhere("organization.id = :organizationId", { organizationId });
+  }
+
+  const perPosition = await query.getRawMany();
+
+  // ✅ TOTAL UNIQUE USERS (across ALL positions)
+  const totalQuery = this.votedRepo
+    .createQueryBuilder("voted")
+    .leftJoin("voted.user", "user")
+    .leftJoin("voted.organization", "organization")
+    .select("COUNT(DISTINCT user.id)", "total");
+
+  if (organizationId) {
+    totalQuery.where("organization.id = :organizationId", { organizationId });
+  }
+
+  totalQuery.andWhere("voted.status = :status", { status: "Active" });
+
+  const totalResult = await totalQuery.getRawOne();
+
+  return {
+    message: "Voter statistics fetched successfully",
+    data: {
+      totalUniqueVoters: Number(totalResult?.total ?? 0),
+      byPosition: perPosition.map((row) => ({
+        position: row.position,
+        totalVoters: Number(row.totalVoters),
+      })),
+    },
+  };
+}
 }

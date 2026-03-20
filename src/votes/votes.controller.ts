@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, ParseIntPipe } from '@nestjs/common';
 import { VoteService } from './votes.service';
 import { CreateVoteDto, VoteTallyDto } from './dto/create-vote.dto';
 import { UpdateVoteDto } from './dto/update-vote.dto';
@@ -26,6 +26,13 @@ export class VotesController {
   @Get("tally")
   tallyVotes(@Query() dto: VoteTallyDto) {
     return this.votesService.tallyVotes(dto);
+  }
+
+  @Get("winners/:organizationId")
+  async getWinnersByPosition(
+    @Param("organizationId", ParseIntPipe) organizationId: number
+  ) {
+    return this.votesService.getWinnersByPosition(organizationId);
   }
 
   @Get(':id')
