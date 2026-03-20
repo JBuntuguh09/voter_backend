@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, ParseIntPipe, Res } from '@nestjs/common';
 import { VoteService } from './votes.service';
 import { CreateVoteDto, VoteTallyDto } from './dto/create-vote.dto';
 import { UpdateVoteDto } from './dto/update-vote.dto';
@@ -6,6 +6,9 @@ import { CurrentUser } from 'src/common/decorators/current-user.decorators';
 import { User } from 'src/auth/entities/user.entity';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/gaurds/jwt-auth.guard';
+import type { Response } from 'express';
+
+
 
 @Controller('votes')
 @ApiBearerAuth('access-token')
@@ -35,6 +38,23 @@ export class VotesController {
     return this.votesService.getWinnersByPosition(organizationId);
   }
 
+  @Get("ranking/pdf/:organizationId")
+async downloadRankingPdf(
+  @Param("organizationId") orgId: number,
+  @Res() res: Response,
+) {
+  const data = await this.votesService.getFullRanking(orgId);
+
+  const pdfBuffer = await this.votesService.generateRankingPdf(data);
+
+  res.set({
+    "Content-Type": "application/pdf",
+    "Content-Disposition": "attachment; filename=full-election-results.pdf",
+  });
+
+  res.end(pdfBuffer);
+}
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.votesService.findOne(+id);
@@ -49,4 +69,9 @@ export class VotesController {
   remove(@Param('id') id: string) {
     return this.votesService.remove(+id);
   }
+
+  
+  
+
+  
 }
