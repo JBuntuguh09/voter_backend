@@ -69,6 +69,10 @@ export class VotedService {
     status: "Active",
   });
 
+  qb.andWhere("voted.User_Id = :userId", {
+    userId: dto.userId,
+  })
+
   const data = await qb.getMany();
 
   return {

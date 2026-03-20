@@ -58,6 +58,10 @@ export class VotedFilterDto {
   @IsOptional()
   @IsNumberString()
   organizationId?: string;
+  
+  @IsOptional()
+  @IsNumberString()
+  userId?: string;
 
   @ApiProperty({
     required: false,
