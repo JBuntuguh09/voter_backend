@@ -153,4 +153,101 @@ export class VoteService {
   }));
 }
 
+
+  async getWinnersByPosition(organizationId?: number) {
+    const query = this.voteRepo
+      .createQueryBuilder("vote")
+      .leftJoin("vote.candidate", "candidate")
+      .leftJoin("vote.organization", "organization")
+      .leftJoin("candidate.image", "image")
+      .select("candidate.position", "position")
+      .addSelect("candidate.id", "candidateId")
+      .addSelect("candidate.firstName", "firstName")
+      .addSelect("candidate.lastName", "lastName")
+      .addSelect("candidate.code", "code")
+      .addSelect("COUNT(vote.id)", "voteCount")
+      .addSelect("image.url", "imageUrl")
+.addSelect("image.base64", "imageBase64") // optional
+      .where("vote.status = :voteStatus", { voteStatus: "Active" })
+      .andWhere("candidate.status = :candidateStatus", {
+        candidateStatus: "Active",
+      })
+      .andWhere("vote.vote = :voteValue", { voteValue: "Yes" })
+      .groupBy("candidate.position")
+      .addGroupBy("candidate.id")
+      .addGroupBy("candidate.firstName")
+      .addGroupBy("candidate.lastName")
+      .addGroupBy("candidate.code")
+      .addGroupBy("image.url")
+.addGroupBy("image.base64")
+      .orderBy("candidate.position", "ASC")
+      .addOrderBy(`COUNT(vote.id)`, "DESC")
+
+    if (organizationId) {
+      query.andWhere("organization.id = :organizationId", { organizationId });
+    }
+
+    const results = await query.getRawMany();
+
+    type CandidateSummary = {
+      candidateId: number;
+      code: string;
+      firstName: string;
+      lastName: string;
+      candidateName: string;
+      voteCount: number;
+      imageUrl?: string | null;
+      imageBase64?: string | null;
+    };
+
+    const grouped = results.reduce((acc, row) => {
+      const position = row.position ?? "Unknown";
+
+      if (!acc[position]) {
+        acc[position] = [];
+      }
+
+      acc[position].push({
+        candidateId: Number(row.candidateId),
+        code: row.code,
+        firstName: row.firstName,
+        lastName: row.lastName,
+        candidateName: `${row.firstName} ${row.lastName}`,
+        voteCount: Number(row.voteCount),
+  imageUrl: row.imageUrl ?? null, // ✅ NEW
+  imageBase64: row.imageBase64 ?? null
+      } as CandidateSummary);
+
+      return acc;
+    }, {} as Record<string, CandidateSummary[]>);
+
+    const finalData = (Object.entries(grouped) as Array<
+      [string, CandidateSummary[]]
+    >).map(([position, candidates]) => {
+      const highestVoteCount = Math.max(
+        ...candidates.map((candidate) => candidate.voteCount)
+      );
+
+      const topCandidates = candidates.filter(
+        (candidate) => candidate.voteCount === highestVoteCount
+      );
+
+      const resultType = topCandidates.length > 1 ? "Draw" : "Winner";
+
+      return {
+        position,
+        resultType,
+        winners: topCandidates.map((candidate) => ({
+          ...candidate,
+          status: resultType,
+        })),
+      };
+    });
+
+    return {
+      message: "Position winners fetched successfully",
+      data: finalData,
+    };
+  }
+
 }
