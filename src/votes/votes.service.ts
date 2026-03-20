@@ -10,6 +10,20 @@ import { User } from "src/auth/entities/user.entity";
 import PDFDocument from "pdfkit";
 import axios from "axios";
 
+const positionOrder = [
+  "VICE-PRESIDENT",
+  "GENERAL-SECRETARY",
+  "ASSISTANT-SECRETARY",
+  "FINANCIAL-SECRETARY",
+  "ORGANIZING-SECRETARY",
+  "ASSISTANT-ORGANIZING SEC",
+  "TREASURER",
+  "CO-OPTED-MEMBERS",
+  "CHAPLAIN-MUSLIM-FACTOR",
+  "PROTOCOL",
+  "PORTRESS",
+];
+
 @Injectable()
 export class VoteService {
   constructor(
@@ -269,283 +283,220 @@ export class VoteService {
     };
   }
 
+
+
+
+
+  /* ===== Custom Position Order ===== */
+  private positionOrder = [
+    "VICE-PRESIDENT",
+  "GENERAL-SECRETARY",
+  "ASSISTANT-SECRETARY",
+  "FINANCIAL-SECRETARY",
+  "ORGANIZING-SECRETARY",
+  "ASSISTANT-ORGANIZING SEC",
+  "TREASURER",
+  "CO-OPTED-MEMBERS",
+  "CHAPLAIN-MUSLIM-FACTOR",
+  "PROTOCOL",
+  "PORTRESS",
+  ];
+
+  /* ===================== GET FULL RANKING ===================== */
   async getFullRanking(organizationId?: number) {
-  const qb = this.candidateRepo
-    .createQueryBuilder("candidate")
-    .leftJoin(
-      "candidate.vote",
-      "vote",
-      "vote.status = :status AND vote.vote = :yes",
-      {
-        status: "Active",
-        yes: "Yes",
-      },
-    )
-    .leftJoin("candidate.organization", "organization")
-    .leftJoin("candidate.image", "image")
+    const qb = this.candidateRepo
+      .createQueryBuilder("candidate")
+      .leftJoin(
+        "candidate.vote",
+        "vote",
+        "vote.status = :status AND vote.vote = :yes",
+        {
+          status: "Active",
+          yes: "Yes",
+        },
+      )
+      .leftJoin("candidate.organization", "organization")
+      .leftJoin("candidate.image", "image")
+      .select("candidate.position", "position")
+      .addSelect("candidate.id", "candidateId")
+      .addSelect("candidate.firstName", "firstName")
+      .addSelect("candidate.lastName", "lastName")
+      .addSelect("image.url", "imageUrl")
+      .addSelect("image.base64", "imageBase64")
+      .addSelect("COUNT(vote.id)", "totalVotes")
+      .where("candidate.status = :status", { status: "Active" })
+      .groupBy("candidate.id")
+      .addGroupBy("candidate.firstName")
+      .addGroupBy("candidate.lastName")
+      .addGroupBy("candidate.position")
+      .addGroupBy("image.url")
+      .addGroupBy("image.base64")
+      .orderBy("candidate.position", "ASC")
+      .addOrderBy("COUNT(vote.id)", "DESC");
 
-    .select("candidate.position", "position")
-    .addSelect("candidate.id", "candidateId")
-    .addSelect("candidate.firstName", "firstName")
-    .addSelect("candidate.lastName", "lastName")
-    .addSelect("image.url", "imageUrl")
-    .addSelect("image.base64", "imageBase64")
+    if (organizationId) {
+      qb.andWhere("organization.id = :organizationId", { organizationId });
+    }
 
-    .addSelect("COUNT(vote.id)", "totalVotes")
+    const rows = await qb.getRawMany();
 
-    .where("candidate.status = :status", { status: "Active" })
+    type CandidateRanking = {
+      candidateId: number;
+      name: string;
+      votes: number;
+      imageBase64?: string | null;
+      imageUrl?: string | null;
+    };
 
-    .groupBy("candidate.id")
-    .addGroupBy("candidate.firstName")
-    .addGroupBy("candidate.lastName")
-    .addGroupBy("candidate.position")
-    .addGroupBy("image.url")
-    .addGroupBy("image.base64")
+    const grouped = rows.reduce((acc, row) => {
+      const pos = row.position;
+      if (!acc[pos]) acc[pos] = [];
 
-    .orderBy("candidate.position", "ASC")
-    .addOrderBy("COUNT(vote.id)", "DESC");
+      acc[pos].push({
+        candidateId: Number(row.candidateId),
+        name: `${row.firstName} ${row.lastName}`,
+        votes: Number(row.totalVotes),
+        imageBase64: row.imageBase64,
+        imageUrl: row.imageUrl,
+      } as CandidateRanking);
 
-  if (organizationId) {
-    qb.andWhere("organization.id = :organizationId", { organizationId });
+      return acc;
+    }, {} as Record<string, CandidateRanking[]>);
+
+    // Sort positions by custom order
+    return (Object.entries(grouped) as Array<[string, CandidateRanking[]]>)
+      .sort(([posA], [posB]) => {
+        const indexA = this.positionOrder.indexOf(posA.toUpperCase());
+        const indexB = this.positionOrder.indexOf(posB.toUpperCase());
+        return indexA - indexB;
+      })
+      .map(([position, candidates]) => {
+        const maxVotes = Math.max(...candidates.map((c) => c.votes));
+        return {
+          position,
+          candidates: candidates.map((c, index) => ({
+            ...c,
+            rank: index + 1,
+            isWinner: c.votes === maxVotes,
+          })),
+        };
+      });
   }
 
-  const rows = await qb.getRawMany();
+  /* ===================== GENERATE PDF ===================== */
+  async generateRankingPdf(data: Array<{ position: string; candidates: any[] }>): Promise<Buffer> {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const doc = new PDFDocument({ size: "A4", margin: 50 });
+        const buffers: Buffer[] = [];
+        doc.on("data", buffers.push.bind(buffers));
+        doc.on("end", () => resolve(Buffer.concat(buffers)));
 
-  // GROUP + RANK
-  type CandidateRanking = {
-    candidateId: number;
-    name: string;
-    votes: number;
-    imageBase64?: string | null;
-    imageUrl?: string | null;
-  };
+        const pageWidth = doc.page.width;
 
-  const grouped = rows.reduce((acc, row) => {
-    const pos = row.position;
-
-    if (!acc[pos]) acc[pos] = [];
-
-    acc[pos].push({
-      candidateId: Number(row.candidateId),
-      name: `${row.firstName} ${row.lastName}`,
-      votes: Number(row.totalVotes),
-      imageBase64: row.imageBase64,
-      imageUrl: row.imageUrl,
-    } as CandidateRanking);
-
-    return acc;
-  }, {} as Record<string, CandidateRanking[]>);
-
-  return (Object.entries(grouped) as Array<[string, CandidateRanking[]]>).map(([position, candidates]) => {
-    const maxVotes = Math.max(...candidates.map(c => c.votes));
-
-    return {
-      position,
-      candidates: candidates.map((c, index) => ({
-        ...c,
-        rank: index + 1,
-        isWinner: c.votes === maxVotes,
-      })),
-    };
-  });
-}
-
- async generateRankingPdf(data: any[]): Promise<Buffer> {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const doc = new PDFDocument({
-        size: "A4",
-        margin: 50,
-      });
-
-      const buffers: Buffer[] = [];
-      doc.on("data", buffers.push.bind(buffers));
-      doc.on("end", () => resolve(Buffer.concat(buffers)));
-
-      const pageWidth = doc.page.width;
-
-      /* ================= HEADER ================= */
-      doc
-        .font("Helvetica-Bold")
-        .fontSize(22)
-        .text("ELECTION RESULTS REPORT", {
-          align: "center",
-        });
-
-      doc.moveDown(0.3);
-
-      doc
-        .font("Helvetica")
-        .fontSize(10)
-        .fillColor("gray")
-        .text(`Generated on: ${new Date().toLocaleString()}`, {
-          align: "center",
-        })
-        .fillColor("black");
-
-      doc.moveDown(1);
-
-      // Divider
-      doc
-        .moveTo(50, doc.y)
-        .lineTo(pageWidth - 50, doc.y)
-        .stroke();
-
-      doc.moveDown(1.5);
-
-      /* ================= LOOP POSITIONS ================= */
-      for (const position of data) {
-        /* ===== POSITION TITLE ===== */
-        doc
-          .font("Helvetica-Bold")
-          .fontSize(16)
-          .fillColor("#1a1a1a")
-          .text(position.position.toUpperCase());
-
-        doc.moveDown(0.5);
-
-        // underline
-        doc
-          .moveTo(50, doc.y)
-          .lineTo(pageWidth - 50, doc.y)
-          .stroke();
-
-        doc.moveDown(0.8);
-
-        /* ===== TABLE HEADER ===== */
-        const startY = doc.y;
-
-        doc.font("Helvetica-Bold").fontSize(10);
-
-        doc.text("Rank", 50, startY);
-        doc.text("Candidate", 110, startY);
-        doc.text("Votes", 350, startY);
-        doc.text("Status", 420, startY);
-
-        // header line
-        doc
-          .moveTo(50, startY + 15)
-          .lineTo(pageWidth - 50, startY + 15)
-          .stroke();
-
-        let y = startY + 25;
-
-        const maxVotes = Math.max(
-          ...position.candidates.map((c: any) => c.votes),
-        );
-
-        /* ===== ROWS ===== */
-        for (const candidate of position.candidates) {
-          const isWinner = candidate.votes === maxVotes;
-
-          // alternating row background
-          if (candidate.rank % 2 === 0) {
-            doc
-              .rect(50, y - 5, pageWidth - 100, 30)
-              .fillOpacity(0.05)
-              .fill("#000")
-              .fillOpacity(1);
-          }
-
-          /* ===== RANK ===== */
-          doc.font("Helvetica").fillColor("black").text(candidate.rank, 50, y);
-
-          /* ===== IMAGE ===== */
-          try {
-            if (candidate.imageBase64) {
-              const base64Data = candidate.imageBase64.split(",").pop();
-              const imgBuffer = Buffer.from(base64Data, "base64");
-
-              doc.image(imgBuffer, 75, y - 5, {
-                width: 25,
-                height: 25,
-              });
-            } else if (candidate.imageUrl) {
-              const response = await axios.get(candidate.imageUrl, {
-                responseType: "arraybuffer",
-              });
-
-              doc.image(Buffer.from(response.data), 75, y - 5, {
-                width: 25,
-                height: 25,
-              });
-            }
-          } catch {
-            doc.circle(88, y + 8, 8).stroke();
-          }
-
-          /* ===== NAME ===== */
-          doc
-            .font("Helvetica")
-            .text(candidate.name, 110, y, { width: 220 });
-
-          /* ===== VOTES ===== */
-          doc.text(candidate.votes.toString(), 350, y);
-
-          /* ===== STATUS ===== */
-          if (isWinner) {
-            doc
-              .fillColor("green")
-              .font("Helvetica-Bold")
-              .text("WINNER", 420, y)
-              .fillColor("black");
-          } else {
-            doc
-              .fillColor("gray")
-              .text("-", 420, y)
-              .fillColor("black");
-          }
-
-          y += 35;
-
-          /* ===== PAGE BREAK ===== */
-          if (y > 750) {
-            doc.addPage();
-            y = 50;
-          }
-        }
-
+        // Header
+        doc.font("Helvetica-Bold").fontSize(22).text("ELECTION RESULTS REPORT", { align: "center" });
+        doc.moveDown(0.3);
+        doc.font("Helvetica").fontSize(10).fillColor("gray")
+          .text(`Generated on: ${new Date().toLocaleString()}`, { align: "center" })
+          .fillColor("black");
+        doc.moveDown(1);
+        doc.moveTo(50, doc.y).lineTo(pageWidth - 50, doc.y).stroke();
         doc.moveDown(1.5);
 
-        /* ===== DRAW NOTICE ===== */
-        const winners = position.candidates.filter(
-          (c: any) => c.votes === maxVotes,
-        );
+        // Loop positions according to custom order
+        for (const pos of this.positionOrder) {
+          const positionData = data.find((d) => d.position.toUpperCase() === pos);
+          if (!positionData) continue; // skip positions with no candidates
 
-        if (winners.length > 1) {
-          doc
-            .fillColor("orange")
-            .font("Helvetica-Bold")
-            .text("⚖ DRAW: Multiple candidates have highest votes")
-            .fillColor("black");
+          doc.font("Helvetica-Bold").fontSize(16).fillColor("#1a1a1a").text(positionData.position);
+          doc.moveDown(0.5);
+          doc.moveTo(50, doc.y).lineTo(pageWidth - 50, doc.y).stroke();
+          doc.moveDown(0.8);
 
-          doc.moveDown(1);
+          // Table header
+          const startY = doc.y;
+          doc.font("Helvetica-Bold").fontSize(10);
+          doc.text("Rank", 50, startY);
+          doc.text("Candidate", 110, startY);
+          doc.text("Votes", 350, startY);
+          doc.text("Status", 420, startY);
+          doc.moveTo(50, startY + 15).lineTo(pageWidth - 50, startY + 15).stroke();
+
+          let y = startY + 25;
+          const maxVotes = Math.max(...positionData.candidates.map((c) => c.votes));
+
+          for (const candidate of positionData.candidates) {
+            const isWinner = candidate.votes === maxVotes;
+
+            // Alternating row background
+            if (candidate.rank % 2 === 0) {
+              doc.rect(50, y - 5, pageWidth - 100, 30).fillOpacity(0.05).fill("#000").fillOpacity(1);
+            }
+
+            // Rank
+            doc.font("Helvetica").fillColor("black").text(candidate.rank, 50, y);
+
+            // Image
+            try {
+              if (candidate.imageBase64) {
+                const base64Data = candidate.imageBase64.split(",").pop();
+                const imgBuffer = Buffer.from(base64Data, "base64");
+                doc.image(imgBuffer, 75, y - 5, { width: 25, height: 25 });
+              } else if (candidate.imageUrl) {
+                const response = await axios.get(candidate.imageUrl, { responseType: "arraybuffer" });
+                doc.image(Buffer.from(response.data), 75, y - 5, { width: 25, height: 25 });
+              }
+            } catch {
+              doc.circle(88, y + 8, 8).stroke();
+            }
+
+            // Candidate name
+            doc.font("Helvetica").text(candidate.name, 110, y, { width: 220 });
+            // Votes
+            doc.text(candidate.votes.toString(), 350, y);
+            // Status
+            if (isWinner) {
+              doc.fillColor("green").font("Helvetica-Bold").text("WINNER", 420, y).fillColor("black");
+            } else {
+              doc.fillColor("gray").text("-", 420, y).fillColor("black");
+            }
+
+            y += 35;
+
+            // Page break
+            if (y > 750) {
+              doc.addPage();
+              y = 50;
+            }
+          }
+
+          doc.moveDown(1.5);
+
+          // Draw notice
+          const winners = positionData.candidates.filter((c) => c.votes === maxVotes);
+          if (winners.length > 1) {
+            doc.fillColor("orange").font("Helvetica-Bold")
+              .text("⚖ DRAW: Multiple candidates have highest votes")
+              .fillColor("black");
+            doc.moveDown(1);
+          }
+
+          doc.addPage();
         }
 
-        doc.addPage();
+        // Footer with page numbers
+        const range = doc.bufferedPageRange();
+        for (let i = range.start; i < range.start + range.count; i++) {
+          doc.switchToPage(i);
+          doc.fontSize(9).fillColor("gray")
+            .text(`Page ${i + 1} of ${range.count}`, 0, doc.page.height - 50, { align: "center" });
+        }
+
+        doc.end();
+      } catch (err) {
+        reject(err);
       }
-
-      /* ================= FOOTER ================= */
-      const range = doc.bufferedPageRange();
-
-      for (let i = range.start; i < range.start + range.count; i++) {
-        doc.switchToPage(i);
-
-        doc
-          .fontSize(9)
-          .fillColor("gray")
-          .text(
-            `Page ${i + 1} of ${range.count}`,
-            0,
-            doc.page.height - 50,
-            { align: "center" },
-          );
-      }
-
-      doc.end();
-    } catch (err) {
-      reject(err);
-    }
-  });
-}
+    });
+  }
 }
